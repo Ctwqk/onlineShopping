@@ -16,8 +16,8 @@ public class RedisConfig extends CachingConfigurerSupport {
         RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();
 
         //defsult serializer is：JdkSerializationRedisSerializer
-        redisTemplate.setKeySerializer(new StringRedisSerializer()); // key序列化
-        //redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer()); // value序列化
+        redisTemplate.setKeySerializer(new StringRedisSerializer()); // key serializing
+        //redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer()); // value serializing
 
         redisTemplate.setConnectionFactory(connectionFactory);
         return redisTemplate;
