@@ -18,17 +18,17 @@ spring:
     password: StrongP@ssword0.0
     database: 0
 
-  mail:
-    host: smtp.gmail.com
-    username: taiwei293@gmail.com
-    port: 587
-    password: 20011106Ctw
-    protocol: smtp
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls.enable: true
+#  mail:
+#    host: smtp.gmail.com
+#    username: taiwei293@gmail.com
+#    port: 587
+#    password: 20011106Ctw
+#    protocol: smtp
+#    properties:
+#      mail:
+#        smtp:
+#          auth: true
+#          starttls.enable: true
 
 mybatis-plus:
   configuration:
