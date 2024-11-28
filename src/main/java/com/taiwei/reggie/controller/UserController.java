@@ -11,6 +11,7 @@ import com.taiwei.reggie.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/user")
@@ -27,6 +29,8 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @PostMapping("/sendMsg")
     public R<String> sendMsg(@RequestBody User user, HttpSession session){
@@ -38,7 +42,10 @@ public class UserController {
             //SMSUtils.sendMessage("reggie","",phone,code);
             //ValidateEmailUtils.sendSimpleEmail(phone, "Validation Email---Do Not Reply", code);
 
-            session.setAttribute(phone,code);
+            //session.setAttribute(phone,code);
+            redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
+
+
             return R.success("sent");
         }
         return R.error("failed to sent");
@@ -50,7 +57,8 @@ public class UserController {
 
         String phone = user.get("phone").toString();
         String code = user.get("code").toString();
-        String correctCode = session.getAttribute(phone).toString();
+        Object correctCode = redisTemplate.opsForValue().get(phone);
+        //Object correctCode = session.getAttribute(phone);
         if(correctCode!=null&&correctCode.equals(code)){
             LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(User::getPhone, phone);
@@ -61,6 +69,7 @@ public class UserController {
                 userService.save(curUser);
             }
             session.setAttribute("user",curUser.getId());
+            redisTemplate.delete(phone);
             return R.success(curUser);
         }
 
