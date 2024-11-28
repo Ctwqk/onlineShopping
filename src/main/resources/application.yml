@@ -5,7 +5,6 @@ spring:
     #应用的名称，可选
     name: reggie_take_out
   datasource:
-    druid:
       driver-class-name: com.mysql.cj.jdbc.Driver
       url: jdbc:mysql://localhost:3306/reggie
       username: shoppinguser
@@ -18,17 +17,26 @@ spring:
     password: StrongP@ssword0.0
     database: 0
 
-#  mail:
-#    host: smtp.gmail.com
-#    username: taiwei293@gmail.com
-#    port: 587
-#    password: 20011106Ctw
-#    protocol: smtp
-#    properties:
-#      mail:
-#        smtp:
-#          auth: true
-#          starttls.enable: true
+  mail:
+    host: smtp.163.com
+    username: taiwei2023@163.com
+    port: 465
+    password: UHN95mG2Q7XP3feu
+    protocol: smtp
+    properties:
+      mail:
+        debug: ture
+        smtp:
+          ssl.enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+          auth: true
+          starttls.enable: true
+          #stattls.required: true
+    default-encoding: utf-8
+
+
 
 mybatis-plus:
   configuration:

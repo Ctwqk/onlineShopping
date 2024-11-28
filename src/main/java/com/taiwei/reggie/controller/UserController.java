@@ -4,6 +4,7 @@ package com.taiwei.reggie.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.taiwei.reggie.Utils.SMSUtils;
 import com.taiwei.reggie.Utils.ValidateCodeUtils;
+import com.taiwei.reggie.Utils.ValidateEmailUtils;
 import com.taiwei.reggie.common.R;
 import com.taiwei.reggie.entity.User;
 import com.taiwei.reggie.service.UserService;
@@ -35,6 +36,7 @@ public class UserController {
 
             log.info("code={}",code);
             //SMSUtils.sendMessage("reggie","",phone,code);
+            //ValidateEmailUtils.sendSimpleEmail(phone, "Validation Email---Do Not Reply", code);
 
             session.setAttribute(phone,code);
             return R.success("sent");
