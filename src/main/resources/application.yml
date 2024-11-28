@@ -5,17 +5,46 @@ spring:
     #应用的名称，可选
     name: reggie_take_out
   datasource:
+<<<<<<< HEAD
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/reggie
     username: shoppinguser
     password: StrongP@ssword0.0
+=======
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/reggie
+    username: shoppinguser
+    password: StrongP@ssword0.0
+>>>>>>> email_impl
 
   redis:
-    host: localhost
-    #host: 192.168.1.3
+    #host: 127.0.0.1
+    host: 192.168.1.3
     port: 6379
     password: StrongP@ssword0.0
     database: 0
+
+  mail:
+    host: smtp.163.com
+    username: taiwei2023@163.com
+    port: 465
+    password: UHN95mG2Q7XP3feu
+    protocol: smtp
+    properties:
+      mail:
+        debug: ture
+        smtp:
+          ssl.enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+          auth: true
+          starttls.enable: true
+          #stattls.required: true
+    default-encoding: utf-8
+
+
+
 mybatis-plus:
   configuration:
     #在映射实体或者属性时，将数据库中表名和字段名中的下划线去掉，按照驼峰命名法映射

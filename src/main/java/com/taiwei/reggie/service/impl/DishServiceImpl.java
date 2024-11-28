@@ -5,15 +5,18 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.taiwei.reggie.dto.DishDto;
 import com.taiwei.reggie.entity.Dish;
 import com.taiwei.reggie.entity.DishFlavor;
+import com.taiwei.reggie.entity.SetmealDish;
 import com.taiwei.reggie.mapper.DishMapper;
 import com.taiwei.reggie.service.DishFlavorService;
 import com.taiwei.reggie.service.DishService;
+import com.taiwei.reggie.service.SetmealDishService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +24,10 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
 
     @Autowired
     private DishFlavorService dishFlavorService;
+
+    @Autowired
+    private SetmealDishService setmealDishService;
+
     @Override
     @Transactional
     public void saveWithFlavor(DishDto dishDto){
@@ -64,6 +71,35 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
             return flavor;
         }).toList();
         dishFlavorService.saveBatch(list);
+    }
+
+
+
+    @Override
+    @Transactional
+    public boolean removeWithFlavor(List<Long> ids){
+        LambdaQueryWrapper<SetmealDish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+
+        lambdaQueryWrapper.in(SetmealDish::getDishId, ids);
+
+        List<SetmealDish> setmealDishes = setmealDishService.list(lambdaQueryWrapper);
+
+
+
+        Set<Long> idSet = setmealDishes.stream().map(SetmealDish::getDishId).collect(Collectors.toSet());
+        List<Long> idsMid = ids.stream().filter(id->!idSet.contains(id)).toList();
+
+        LambdaQueryWrapper<Dish> lambdaQueryWrapper1 = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper1.eq(Dish::getStatus,1);
+        lambdaQueryWrapper1.in(Dish::getId,idsMid);
+        List<Dish> dishDel = this.list(lambdaQueryWrapper1);
+        List<Long> idDel = dishDel.stream().map(Dish::getId).toList();
+
+        LambdaQueryWrapper<DishFlavor> lambdaQueryWrapper2 = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper2.in(DishFlavor::getDishId, idDel);
+        dishFlavorService.remove(lambdaQueryWrapper2);
+        this.remove(lambdaQueryWrapper1);
+        return ids.size()==idDel.size();
     }
 
 }
