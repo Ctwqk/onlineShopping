@@ -4,23 +4,38 @@ spring:
   application:
     #应用的名称，可选
     name: reggie_take_out
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/reggie
-    username: shoppinguser
-    password: StrongP@ssword0.0
-
-
-  redis:
-    #host: 127.0.0.1
-    host: 192.168.1.3
-    port: 6379
-    password: StrongP@ssword0.0
-    database: 0
-  cache:
-    redis:
-      time-to-live: 1800000  #expire in 30 mins
-
+  shardingsphere:
+    datasource:
+      names:
+        master,slave
+      # 主数据源
+      master:
+        type: com.alibaba.druid.pool.DruidDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://192.168.1.3:3306/reggie?characterEncoding=utf-8
+        username: shoppinguser
+        password: StrongP@ssword0.0
+      # 从数据源
+      slave:
+        type: com.alibaba.druid.pool.DruidDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/reggie?characterEncoding=utf-8
+        username: shoppinguser
+        password: StrongP@ssword0.0
+    masterslave:
+      # 读写分离配置
+      load-balance-algorithm-type: round_robin #轮询
+      # 最终的数据源名称
+      name: dataSource
+      # 主库数据源名称
+      master-data-source-name: master
+      # 从库数据源名称列表，多个逗号分隔
+      slave-data-source-names: slave
+    props:
+      sql:
+        show: true #开启SQL显示，默认false
+  main:
+    allow-bean-definition-overriding: true
 
   mail:
     host: smtp.163.com
@@ -42,7 +57,14 @@ spring:
     default-encoding: utf-8
 
 
-
+  redis:
+    host: 192.168.1.3
+    port: 6379
+    password: StrongP@ssword0.0
+    database: 0
+  cache:
+    redis:
+      time-to-live: 1800000 #设置缓存数据的过期时间
 mybatis-plus:
   configuration:
     #在映射实体或者属性时，将数据库中表名和字段名中的下划线去掉，按照驼峰命名法映射
@@ -53,4 +75,7 @@ mybatis-plus:
       id-type: ASSIGN_ID
 
 reggie:
-  image_path: /tmp/reggie_images/
+  image_path: /tmp/reggie_images
+
+
+
