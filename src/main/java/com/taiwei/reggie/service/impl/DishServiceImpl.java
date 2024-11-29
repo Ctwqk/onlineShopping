@@ -2,6 +2,7 @@ package com.taiwei.reggie.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.taiwei.reggie.common.CustomException;
 import com.taiwei.reggie.dto.DishDto;
 import com.taiwei.reggie.entity.Dish;
 import com.taiwei.reggie.entity.DishFlavor;
@@ -86,14 +87,21 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
 
 
 
+
         Set<Long> idSet = setmealDishes.stream().map(SetmealDish::getDishId).collect(Collectors.toSet());
         List<Long> idsMid = ids.stream().filter(id->!idSet.contains(id)).toList();
+        if(idsMid==null||idsMid.size()==0) {
+            throw new CustomException("can not delete anything");
+        }
 
         LambdaQueryWrapper<Dish> lambdaQueryWrapper1 = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper1.eq(Dish::getStatus,1);
+        lambdaQueryWrapper1.eq(Dish::getStatus,0);
         lambdaQueryWrapper1.in(Dish::getId,idsMid);
         List<Dish> dishDel = this.list(lambdaQueryWrapper1);
         List<Long> idDel = dishDel.stream().map(Dish::getId).toList();
+        if(idDel==null||idDel.size()==0) {
+            throw new CustomException("can not delete anything");
+        }
 
         LambdaQueryWrapper<DishFlavor> lambdaQueryWrapper2 = new LambdaQueryWrapper<>();
         lambdaQueryWrapper2.in(DishFlavor::getDishId, idDel);

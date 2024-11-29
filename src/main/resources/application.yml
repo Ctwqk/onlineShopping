@@ -5,17 +5,11 @@ spring:
     #应用的名称，可选
     name: reggie_take_out
   datasource:
-<<<<<<< HEAD
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/reggie
     username: shoppinguser
     password: StrongP@ssword0.0
-=======
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/reggie
-    username: shoppinguser
-    password: StrongP@ssword0.0
->>>>>>> email_impl
+
 
   redis:
     #host: 127.0.0.1
@@ -23,6 +17,10 @@ spring:
     port: 6379
     password: StrongP@ssword0.0
     database: 0
+  cache:
+    redis:
+      time-to-live: 1800000  #expire in 30 mins
+
 
   mail:
     host: smtp.163.com

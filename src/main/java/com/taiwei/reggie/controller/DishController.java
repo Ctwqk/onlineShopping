@@ -148,9 +148,9 @@ public class DishController {
 
         return R.success(resultList);
     }
-    @DeleteMapping("/{ids}")
-    public R<String> delete(@PathVariable List<Long> ids){
-
+    @DeleteMapping
+    public R<String> delete(@RequestParam List<Long> ids){
+        redisTemplate.delete("dish_*");
         if(dishService.removeWithFlavor(ids)){
             return R.success("all deleted");
         }
