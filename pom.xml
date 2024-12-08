@@ -9,9 +9,9 @@
         <version>2.4.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.itheima</groupId>
-    <artifactId>reggie_take_out</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>com.taiwei</groupId>
+    <artifactId>online_shopping</artifactId>
+    <version>1.0</version>
     <properties>
         <java.version>17</java.version>
     </properties>
