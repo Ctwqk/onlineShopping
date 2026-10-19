@@ -3,9 +3,11 @@ package com.taiwei.reggie.dto;
 import com.taiwei.reggie.entity.OrderDetail;
 import com.taiwei.reggie.entity.Orders;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import java.util.List;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class OrdersDto extends Orders {
 
     private String userName;

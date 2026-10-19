@@ -176,7 +176,7 @@ class CartAndOrderFlowIT extends AbstractIntegrationTest {
         customer.post("/order/submit", Map.of("addressBookId", address, "payMethod", 1, "remark", "no onions"))
                 .assertSuccess();
 
-        // 13.88 + 2 * 3.99 + 20.05 = 41.91 (integer truncation, as in the original code, would give 41)
+        // 13.88 + 2 * 3.99 + 20.05 = 41.91 (the original code truncated every line to an int and stored 13 + 7 + 20 = 40)
         Map<String, Object> order = jdbc.queryForMap("SELECT * FROM orders");
         assertThat((BigDecimal) order.get("amount")).isEqualByComparingTo("41.91");
         assertThat(order.get("status")).isEqualTo(2);
