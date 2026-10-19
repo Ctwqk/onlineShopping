@@ -474,6 +474,7 @@
               let params = {
                   dishId:item.dishId,
                   setmealId:item.setmealId,
+                  dishFlavor:item.dishFlavor,
                 }
                 const res = await updateCartApi(params)
                 if(res.code === 1){

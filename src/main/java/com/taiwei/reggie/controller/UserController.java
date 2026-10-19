@@ -1,78 +1,91 @@
 package com.taiwei.reggie.controller;
 
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.taiwei.reggie.Utils.SMSUtils;
-import com.taiwei.reggie.Utils.ValidateCodeUtils;
-import com.taiwei.reggie.Utils.ValidateEmailUtils;
 import com.taiwei.reggie.common.R;
 import com.taiwei.reggie.entity.User;
+import com.taiwei.reggie.config.ReggieProperties;
+import com.taiwei.reggie.filter.LoginCheckFilter;
+import com.taiwei.reggie.notify.VerificationCodeService;
 import com.taiwei.reggie.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
+/**
+ * Customer sign-in with a one-time code (passwordless). The first successful login creates the customer account.
+ */
 @RestController
 @RequestMapping("/user")
 @Slf4j
+@Tag(name = "Customer login")
 public class UserController {
-    @Autowired
-    private UserService userService;
 
-    @Autowired
-    private RedisTemplate redisTemplate;
+    private final UserService userService;
+    private final VerificationCodeService verificationCodeService;
+    private final ReggieProperties properties;
 
+    public UserController(UserService userService, VerificationCodeService verificationCodeService,
+                          ReggieProperties properties) {
+        this.userService = userService;
+        this.verificationCodeService = verificationCodeService;
+        this.properties = properties;
+    }
+
+    /** Sends (or, with the default log channel, logs) a one-time code to the phone number / email. */
     @PostMapping("/sendMsg")
-    public R<String> sendMsg(@RequestBody User user, HttpSession session){
-        String phone = user.getPhone();
-        if(StringUtils.isNotEmpty(phone)){
-            String code = ValidateCodeUtils.generateValidateCode(4).toString();
-
-            log.info("code={}",code);
-            //SMSUtils.sendMessage("reggie","",phone,code);
-            //ValidateEmailUtils.sendSimpleEmail(phone, "Validation Email---Do Not Reply", code);
-
-            //session.setAttribute(phone,code);
-            redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
-
-
-            return R.success("sent");
+    public R<String> sendMsg(@RequestBody User user) {
+        String target = user.getPhone();
+        if (!StringUtils.hasText(target)) {
+            return R.error("phone number is required");
         }
-        return R.error("failed to sent");
+        String code = verificationCodeService.issue(target.trim());
+        R<String> response = R.success("sent");
+        if (properties.getVerification().isExposeCode()) {
+            response.add("devCode", code); // demo mode only, see reggie.verification.expose-code
+        }
+        return response;
     }
 
     @PostMapping("/login")
-    public R<User> login(@RequestBody Map user, HttpSession session){
-        log.info(user.toString());
-
-        String phone = user.get("phone").toString();
-        String code = user.get("code").toString();
-        Object correctCode = redisTemplate.opsForValue().get(phone);
-        //Object correctCode = session.getAttribute(phone);
-        if(correctCode!=null&&correctCode.equals(code)){
-            LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(User::getPhone, phone);
-            User curUser = userService.getOne(queryWrapper);
-            if(curUser==null){
-                curUser = new User();
-                curUser.setPhone(phone);
-                userService.save(curUser);
-            }
-            session.setAttribute("user",curUser.getId());
-            redisTemplate.delete(phone);
-            return R.success(curUser);
+    public R<User> login(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        Object phoneValue = body.get("phone");
+        Object codeValue = body.get("code");
+        if (phoneValue == null || codeValue == null) {
+            return R.error("phone number and code are required");
         }
+        String phone = phoneValue.toString().trim();
+        if (!verificationCodeService.verify(phone, codeValue.toString())) {
+            return R.error("wrong or expired verification code");
+        }
+        User user = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getPhone, phone));
+        if (user == null) {
+            user = new User();
+            user.setPhone(phone);
+            user.setStatus(1);
+            userService.save(user);
+        } else if (Integer.valueOf(0).equals(user.getStatus())) {
+            return R.error("this account is disabled");
+        }
+        request.getSession();
+        request.changeSessionId(); // prevent session fixation
+        request.getSession().setAttribute(LoginCheckFilter.USER_SESSION_KEY, user.getId());
+        return R.success(user);
+    }
 
-        return R.error("failed");
+    @PostMapping("/loginout")
+    public R<String> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.removeAttribute(LoginCheckFilter.USER_SESSION_KEY);
+        }
+        return R.success("logged out");
     }
 }

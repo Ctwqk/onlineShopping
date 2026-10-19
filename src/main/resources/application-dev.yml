@@ -1,0 +1,13 @@
+# Demo / local development: loads the seed data (db/demo) and echoes the login code so the UI works without SMS.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo
+
+reggie:
+  verification:
+    expose-code: true
+    resend-cooldown-seconds: 0
+
+logging:
+  level:
+    com.taiwei.reggie: debug

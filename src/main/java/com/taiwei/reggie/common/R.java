@@ -1,31 +1,36 @@
 package com.taiwei.reggie.common;
-//returned result from server. All response data from server will be encapsulated as objects of this class
+
 import lombok.Data;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Envelope for every JSON response: {@code code} 1 = success, 0 = failure (with {@code msg}).
+ */
 @Data
 public class R<T> implements Serializable {
 
-    private Integer code; //编码：1成功，0和其它数字为失败
+    private static final long serialVersionUID = 1L;
 
-    private String msg; //错误信息
+    private Integer code; // 1 = success, 0 (or anything else) = failure
 
-    private T data; //数据
+    private String msg; // error message
 
-    private Map map = new HashMap(); //动态数据
+    private T data; // payload
+
+    private Map<String, Object> map = new HashMap<>(); // dynamic extras
 
     public static <T> R<T> success(T object) {
-        R<T> r = new R<T>();
+        R<T> r = new R<>();
         r.data = object;
         r.code = 1;
         return r;
     }
 
     public static <T> R<T> error(String msg) {
-        R r = new R();
+        R<T> r = new R<>();
         r.msg = msg;
         r.code = 0;
         return r;

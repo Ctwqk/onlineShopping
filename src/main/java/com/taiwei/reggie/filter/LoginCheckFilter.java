@@ -1,88 +1,71 @@
 package com.taiwei.reggie.filter;
 
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taiwei.reggie.common.BaseContext;
 import com.taiwei.reggie.common.R;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.AntPathMatcher;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.servlet.*;
-import javax.servlet.annotation.WebFilter;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
-//import static org.apache.logging.log4j.message.MapMessage.MapFormat.JSON;
-import com.alibaba.fastjson.JSON;
 /**
- * check whether user logged in
+ * Session-based authentication for both UIs, driven by {@link AccessPolicy}. Unauthenticated callers get the
+ * {@code {"code":0,"msg":"NOTLOGIN"}} envelope, which the front-end axios interceptors turn into a redirect to the
+ * matching login page. The id of the caller is exposed through {@link BaseContext} for the duration of the request.
  */
+@Component
+public class LoginCheckFilter extends OncePerRequestFilter {
 
-@WebFilter(filterName = "loginCheckFilter", urlPatterns = "/*")
-@Slf4j
-public class LoginCheckFilter implements Filter {
-    public static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
-    public boolean judgeSession(String userType,HttpSession session){
-        return session.getAttribute(userType)!=null;
+    public static final String EMPLOYEE_SESSION_KEY = "employee";
+    public static final String USER_SESSION_KEY = "user";
+
+    private final ObjectMapper objectMapper;
+
+    public LoginCheckFilter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
+
     @Override
-    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-
-        HttpServletRequest request = (HttpServletRequest) servletRequest;
-        HttpServletResponse response = (HttpServletResponse) servletResponse;
-        /**
-         * check the uri of request
-         * whether need to check
-         * check if is logged in
-         */
-        String requestURI = request.getRequestURI();
-        String[] freeURLs = new String[]{
-                "/employee/login",
-                "/employee/logout",
-                "/backend/**",
-                "/front/**",
-                "/user/sendMsg",
-                "/user/login",
-                "/doc.html",
-                "/webjars/**",
-                "/swagger-resources",
-                "/v2/api-docs"
-        };
-
-        boolean check = check(requestURI,freeURLs);
-        if(check){
-            filterChain.doFilter(request,response);
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        AccessPolicy.Access access = AccessPolicy.classify(request.getMethod(), request.getRequestURI());
+        if (access == AccessPolicy.Access.PUBLIC) {
+            chain.doFilter(request, response);
             return;
         }
 
-        if(judgeSession("employee",request.getSession())){
-            Long id = (Long) request.getSession().getAttribute("employee");
-            BaseContext.setCurrentID(id);
-            filterChain.doFilter(request,response);
+        HttpSession session = request.getSession(false);
+        Long principal = resolvePrincipal(session, access);
+        if (principal == null) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(R.error("NOTLOGIN")));
             return;
         }
-        else if(judgeSession("user",request.getSession())){
-            Long id = (Long) request.getSession().getAttribute("user");
-            BaseContext.setCurrentID(id);
-            filterChain.doFilter(request,response);
-            return;
+        BaseContext.setCurrentID(principal);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            BaseContext.clear(); // servlet threads are pooled
         }
-        else{
-            response.getWriter().write(JSON.toJSONString(R.error("NOTLOGIN")));
-        }
-
-
-
-        return;
     }
 
-    public boolean check(String requestURI,String[] freeURLs){
-        for(String url: freeURLs){
-            if(PATH_MATCHER.match(url,requestURI)){
-                return true;
-            }
+    private static Long resolvePrincipal(HttpSession session, AccessPolicy.Access access) {
+        if (session == null) {
+            return null;
         }
-        return false;
+        Long employee = (Long) session.getAttribute(EMPLOYEE_SESSION_KEY);
+        Long user = (Long) session.getAttribute(USER_SESSION_KEY);
+        return switch (access) {
+            case ADMIN -> employee;
+            case CUSTOMER -> user;
+            case ANY -> employee != null ? employee : user;
+            case PUBLIC -> null;
+        };
     }
 }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>onlineShopping</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #fff8ed; color: #3b2a1a; }
+    main { max-width: 760px; margin: 0 auto; padding: 64px 24px; }
+    h1 { margin: 0 0 8px; font-size: 32px; }
+    p.lead { margin: 0 0 40px; color: #7a6450; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    a.card { display: block; padding: 20px; border-radius: 14px; background: #fff; text-decoration: none; color: inherit;
+             box-shadow: 0 2px 10px rgba(80, 50, 10, .08); border: 1px solid #f0e2cc; transition: transform .1s; }
+    a.card:hover { transform: translateY(-2px); border-color: #ffc200; }
+    a.card strong { display: block; font-size: 18px; margin-bottom: 6px; }
+    a.card span { font-size: 14px; color: #7a6450; }
+    footer { margin-top: 40px; font-size: 13px; color: #9a8570; }
+    code { background: #f6ead6; padding: 1px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>onlineShopping</h1>
+  <p class="lead">Food-ordering platform: an admin console for the restaurant and a mobile front for customers.</p>
+  <div class="cards">
+    <a class="card" href="/backend/page/login/login.html"><strong>Admin console</strong><span>Dishes, setmeals, categories, employees and orders (desktop browser).</span></a>
+    <a class="card" href="/front/page/login.html"><strong>Customer front</strong><span>Menu, cart, address book and checkout (best viewed in a phone-sized window).</span></a>
+    <a class="card" href="/doc.html"><strong>API docs</strong><span>Knife4j UI over the OpenAPI description; Swagger UI is at <code>/swagger-ui.html</code>.</span></a>
+    <a class="card" href="/actuator/health"><strong>Health</strong><span>Liveness / readiness probe used by Docker Compose.</span></a>
+  </div>
+  <footer>Demo accounts are documented in the project README.</footer>
+</main>
+</body>
+</html>

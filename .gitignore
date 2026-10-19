@@ -38,5 +38,9 @@ build/
 ### Mac OS ###
 .DS_Store
 
-src/main/resources/application.yml
-src/main/resources/application-local.properties
+### Local runtime data ###
+data/
+.env
+application-local.*
+*.log
+node_modules/

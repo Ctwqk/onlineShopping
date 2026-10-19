@@ -1,0 +1,97 @@
+# Every environment-specific value can be overridden with an environment variable (see .env.example).
+# Profiles: (default) = schema only, verification codes go to the log;  dev = + demo seed data, code echoed to the UI.
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      timeout: 8h
+
+spring:
+  application:
+    name: online_shopping
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/reggie?characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:reggie}
+    password: ${DB_PASSWORD:reggie}
+    druid:
+      initial-size: 2
+      min-idle: 2
+      max-active: 20
+      max-wait: 10000
+      validation-query: SELECT 1
+      test-while-idle: true
+      # The Druid monitoring console is not exposed.
+      stat-view-servlet:
+        enabled: false
+      web-stat-filter:
+        enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+  cache:
+    type: redis
+    redis:
+      time-to-live: 30m
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  jackson:
+    time-zone: ${APP_TIME_ZONE:UTC}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: ASSIGN_ID
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+# Knife4j's enhancement customizer (knife4j.enable=true) is binary-incompatible with springdoc >= 2.7; the Knife4j
+# UI at /doc.html works without it.
+knife4j:
+  enable: false
+
+reggie:
+  image-path: ${REGGIE_IMAGE_PATH:./data/images/}
+  verification:
+    channel: ${REGGIE_VERIFICATION_CHANNEL:log}      # log | sms | email
+    expose-code: ${REGGIE_EXPOSE_CODE:false}
+    resend-cooldown-seconds: ${REGGIE_CODE_COOLDOWN_SECONDS:30}
+  sms:
+    region-id: ${REGGIE_SMS_REGION:cn-hangzhou}
+    access-key-id: ${REGGIE_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${REGGIE_SMS_ACCESS_KEY_SECRET:}
+    sign-name: ${REGGIE_SMS_SIGN_NAME:}
+    template-code: ${REGGIE_SMS_TEMPLATE_CODE:}
+  # Email channel: also set spring.mail.* (SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD)
+  email:
+    from: ${REGGIE_EMAIL_FROM:}
+  bootstrap-admin:
+    username: ${REGGIE_ADMIN_USERNAME:admin}
+    password: ${REGGIE_ADMIN_PASSWORD:}
+
+logging:
+  level:
+    com.taiwei.reggie: info

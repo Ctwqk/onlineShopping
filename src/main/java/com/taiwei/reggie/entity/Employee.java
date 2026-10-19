@@ -2,6 +2,7 @@ package com.taiwei.reggie.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -17,6 +18,8 @@ public class Employee implements Serializable {
 
     private String name;
 
+    /** BCrypt hash; accepted in requests (login, create) but never written to responses. */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private String phone;

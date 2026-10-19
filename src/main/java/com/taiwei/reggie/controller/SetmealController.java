@@ -1,160 +1,73 @@
 package com.taiwei.reggie.controller;
 
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.taiwei.reggie.common.R;
+import com.taiwei.reggie.dto.DishDto;
 import com.taiwei.reggie.dto.SetmealDto;
-import com.taiwei.reggie.entity.Category;
 import com.taiwei.reggie.entity.Setmeal;
-import com.taiwei.reggie.entity.SetmealDish;
-import com.taiwei.reggie.service.CategoryService;
-import com.taiwei.reggie.service.SetmealDishService;
 import com.taiwei.reggie.service.SetmealService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.cache.CacheProperties;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.RedisTemplate;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
-@Slf4j
 @RestController
 @RequestMapping("/setmeal")
+@Tag(name = "Setmeals (combos)")
 public class SetmealController {
 
-    @Autowired
-    private SetmealDishService setmealDishService;
+    private final SetmealService setmealService;
 
-    @Autowired
-    private SetmealService setmealService;
-
-    @Autowired
-    private CategoryService categoryService;
-
-    @Autowired
-    private RedisTemplate redisTemplate;
+    public SetmealController(SetmealService setmealService) {
+        this.setmealService = setmealService;
+    }
 
     @PostMapping
-    @CacheEvict(value = "setmealCache", allEntries = true) //clear all cache under setmealCache
-    public R<String> save(@RequestBody SetmealDto setmealDto){
-        //log.info(setmealDto.toString());
-
+    public R<String> save(@RequestBody SetmealDto setmealDto) {
         setmealService.saveWithDish(setmealDto);
-
-        //String queryKey = "setmeal_" + setmealDto.getCategoryId() + "_1";
-        //redisTemplate.delete(queryKey);
-
-
         return R.success("saved");
     }
 
     @GetMapping("/page")
-    public R<Page> page(int page, int pageSize, String name){
-        Page<Setmeal> pageInfo = new Page<>();
-        Page<SetmealDto> pageResult = new Page<>();
-
-        LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(name!=null, Setmeal::getName, name);
-        queryWrapper.orderByDesc(Setmeal::getUpdateTime);
-
-        setmealService.page(pageInfo, queryWrapper);
-
-        BeanUtils.copyProperties(pageInfo,pageResult, "records");
-
-        List<Setmeal> list = pageInfo.getRecords();
-
-        LambdaQueryWrapper<Category> categoryLambdaQueryWrapper = new LambdaQueryWrapper<>();
-
-        List<SetmealDto> listResult = list.stream().map((setmeal)->{
-
-            SetmealDto setmealDto = new SetmealDto();
-            BeanUtils.copyProperties(setmeal,setmealDto);
-            Category category = categoryService.getById(setmeal.getCategoryId());
-            if(category !=null){
-                setmealDto.setCategoryName(category.getName());
-            }
-
-            return setmealDto;
-        }).toList();
-
-        pageResult.setRecords(listResult);
-        return R.success(pageResult);
-
+    public R<Page<SetmealDto>> page(int page, int pageSize, String name) {
+        return R.success(setmealService.pageWithCategory(page, pageSize, name));
     }
 
     @DeleteMapping
-    @CacheEvict(value = "setmealCache", allEntries = true) //clear all cache under setmealCache
-    public R<String> delete(@RequestParam List<Long> ids){
-        //redisTemplate.delete("setmeal_*");
-        if(setmealService.removeWithDish(ids)){
+    public R<String> delete(@RequestParam List<Long> ids) {
+        if (setmealService.removeWithDish(ids)) {
             return R.success("all selection deleted");
         }
-        else{
-            return R.success("all not in sale selections deleted");
-        }
+        return R.success("deleted, except setmeals that are on sale");
     }
 
     @GetMapping("/{id}")
-    public R<SetmealDto> get(@PathVariable Long id){
-        //return R.success(setmealService.getSetmealWithFlavorById(id));
-        Setmeal setmeal = setmealService.getById(id);
-        SetmealDto setmealDto= new SetmealDto();
-        BeanUtils.copyProperties(setmeal,setmealDto);
-        setmealDto.setCategoryName(categoryService.getById(setmeal.getCategoryId()).getName());
-        LambdaQueryWrapper<SetmealDish> lambdaQueryWrapper = new LambdaQueryWrapper<SetmealDish>();
-        lambdaQueryWrapper.eq(SetmealDish::getSetmealId,id);
-        //List<Long> dishIDs = setmealDishService.list(lambdaQueryWrapper).stream().map((SetmealDish::getDishId)).toList();
-        setmealDto.setSetmealDishes(setmealDishService.list(lambdaQueryWrapper));
-        return R.success(setmealDto);
+    public R<SetmealDto> get(@PathVariable Long id) {
+        return R.success(setmealService.getWithDishes(id));
     }
 
     @PutMapping
-    public R<String> put(@RequestBody SetmealDto setmealDto){
+    public R<String> put(@RequestBody SetmealDto setmealDto) {
         setmealService.updateWithDish(setmealDto);
-        String queryKey = "setmeal_" + setmealDto.getCategoryId() + "_" + setmealDto.getStatus();
-        redisTemplate.delete(queryKey);
         return R.success("updated");
     }
 
+    /** Batch start / stop selling; {@code ids} is a comma-separated list. */
     @PostMapping("/status/{status}")
-    public R<String> updateStatus(@PathVariable int status, @RequestParam Long ids){
-//        Setmeal setmeal = new Setmeal();
-//        setmeal.setId(ids);
-//        setmeal.setStatus(status);
-//        setmealService.updateById(setmeal);
-//        redisTemplate.delete("setmeal_*");
-//        return R.success("updated");
-        Setmeal setmeal = setmealService.getById(ids);
-        String queryKey = "setmeal_" + setmeal.getCategoryId() + "_" + (Integer) (status^1);
-        redisTemplate.delete(queryKey);
-        setmeal.setStatus(status);
-        setmealService.updateById(setmeal);
-        return R.success("update");
+    public R<String> updateStatus(@PathVariable int status, @RequestParam List<Long> ids) {
+        setmealService.updateStatus(ids, status);
+        return R.success("updated");
     }
 
+    /** Setmeals of a category (served from the Redis-backed cache). */
     @GetMapping("/list")
-    @Cacheable(value = "setmealCache", key = "#setmeal.categoryId +'_'+ #setmeal.status")
-    public R<List<Setmeal>> list(   Setmeal setmeal){
-        List<Setmeal> resultList = null;
+    public R<List<Setmeal>> list(Setmeal setmeal) {
+        return R.success(setmealService.listBy(setmeal.getCategoryId(), setmeal.getStatus()));
+    }
 
-        String queryKey = "setmeal_" + setmeal.getCategoryId() + "_" + setmeal.getStatus();
-        resultList = (List<Setmeal>)redisTemplate.opsForValue().get(queryKey);
-        if(resultList != null){
-            return R.success(resultList);
-        }
-        LambdaQueryWrapper<Setmeal> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(setmeal.getCategoryId()!=null, Setmeal::getCategoryId, setmeal.getCategoryId());
-        queryWrapper.eq(setmeal.getStatus()!=null, Setmeal::getStatus, setmeal.getStatus());
-        queryWrapper.orderByDesc(Setmeal::getUpdateTime);
-        resultList = setmealService.list(queryWrapper);
-        redisTemplate.opsForValue().set(queryKey,resultList,60, TimeUnit.MINUTES);
-        return R.success(resultList);
+    /** Dishes (with portion counts) contained in a setmeal - the customer front's "combo details" dialog. */
+    @GetMapping("/dish/{id}")
+    public R<List<DishDto>> dishes(@PathVariable Long id) {
+        return R.success(setmealService.dishesOf(id));
     }
 }
