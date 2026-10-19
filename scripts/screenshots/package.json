@@ -1,0 +1,12 @@
+{
+  "name": "onlineshopping-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Playwright script that captures the README screenshots from a running stack",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.57.0"
+  }
+}
