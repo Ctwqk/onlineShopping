@@ -273,9 +273,9 @@
             goodsPrice(){
               let price = 0
               this.cartData.forEach(item=>{
-                price += (item.number * item.amount)
+                price += Math.round(item.number * item.amount * 100) // sum in cents to avoid float drift such as 95.3999999
               })
-              return price
+              return price / 100
             }
           },
           created(){
