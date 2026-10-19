@@ -1,0 +1,21 @@
+# Used by the Testcontainers-based integration tests (*IT). Datasource / Redis settings are injected by
+# AbstractIntegrationTest from the started containers.
+reggie:
+  image-path: ${java.io.tmpdir}/online-shopping-it-images/
+  verification:
+    expose-code: true
+    resend-cooldown-seconds: 0
+    max-attempts: 3
+  bootstrap-admin:
+    username: admin
+    password: Adm1n-for-tests
+
+spring:
+  flyway:
+    locations: classpath:db/migration
+
+logging:
+  level:
+    com.taiwei.reggie: warn
+    com.baomidou: warn
+    org.testcontainers: warn
