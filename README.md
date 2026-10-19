@@ -251,5 +251,7 @@ Found by reading the code and covered by the tests above:
 - The admin UI offers dispatch and complete only; cancelling exists in the API (`PUT /order` with status 5) but has no
   button, and customers cannot cancel. There are no staff roles: every employee is an administrator.
 - Uploaded images live on a local volume.
+- `src/main/resources/front/fonts` contains PingFang SC and DIN font files that came with the course template; they
+  are proprietary typefaces, so replace them with open fonts before deploying the front-end publicly.
 - The Playwright screenshot script is manual; it is not part of CI.
 - No `LICENSE` file yet (the owner has to choose one).
