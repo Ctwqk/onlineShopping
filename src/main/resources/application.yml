@@ -40,6 +40,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # a database that was seeded under the `dev` profile can still be started without it
+    ignore-migration-patterns: "*:missing"
   servlet:
     multipart:
       max-file-size: 5MB

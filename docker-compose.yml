@@ -1,0 +1,77 @@
+# MySQL + Redis + the application. `docker compose up --build`, then open http://localhost:48080
+# Host ports are high ports on purpose; change them in .env (see .env.example).
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-reggie-root}
+      MYSQL_DATABASE: reggie
+      MYSQL_USER: reggie
+      MYSQL_PASSWORD: ${DB_PASSWORD:-reggie}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-43306}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-46379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # `dev` = demo seed data + the login code is echoed to the UI. Use an empty value (and set
+      # REGGIE_ADMIN_PASSWORD) for an empty production-style database.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE-dev}
+      DB_URL: jdbc:mysql://mysql:3306/reggie?characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: reggie
+      DB_PASSWORD: ${DB_PASSWORD:-reggie}
+      REDIS_HOST: redis
+      REGGIE_ADMIN_PASSWORD: ${REGGIE_ADMIN_PASSWORD:-}
+      REGGIE_VERIFICATION_CHANNEL: ${REGGIE_VERIFICATION_CHANNEL:-log}
+      REGGIE_SMS_ACCESS_KEY_ID: ${REGGIE_SMS_ACCESS_KEY_ID:-}
+      REGGIE_SMS_ACCESS_KEY_SECRET: ${REGGIE_SMS_ACCESS_KEY_SECRET:-}
+      REGGIE_SMS_SIGN_NAME: ${REGGIE_SMS_SIGN_NAME:-}
+      REGGIE_SMS_TEMPLATE_CODE: ${REGGIE_SMS_TEMPLATE_CODE:-}
+    ports:
+      - "${APP_PORT:-48080}:8080"
+    volumes:
+      - app-images:/data/images
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  mysql-data:
+  redis-data:
+  app-images:
