@@ -134,8 +134,7 @@ class AuthenticationIT extends AbstractIntegrationTest {
     @Test
     void adminAndCustomerSharingOneBrowserSessionKeepSeparateIdentities() {
         ApiClient browser = adminClient();
-        String code = browser.post("/user/sendMsg", Map.of("phone", "13900139000")).json()
-                .path("map").path("devCode").asText();
+        String code = requestCode(browser, "13900139000");
         browser.post("/user/login", Map.of("phone", "13900139000", "code", code)).assertSuccess();
 
         // the cart belongs to the customer, not to the employee id that is also in the session

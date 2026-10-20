@@ -12,6 +12,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,12 +33,14 @@ public class UserController {
     private final UserService userService;
     private final VerificationCodeService verificationCodeService;
     private final ReggieProperties properties;
+    private final Environment environment;
 
     public UserController(UserService userService, VerificationCodeService verificationCodeService,
-                          ReggieProperties properties) {
+                          ReggieProperties properties, Environment environment) {
         this.userService = userService;
         this.verificationCodeService = verificationCodeService;
         this.properties = properties;
+        this.environment = environment;
     }
 
     /** Sends (or, with the default log channel, logs) a one-time code to the phone number / email. */
@@ -48,7 +52,7 @@ public class UserController {
         }
         String code = verificationCodeService.issue(target.trim());
         R<String> response = R.success("sent");
-        if (properties.getVerification().isExposeCode()) {
+        if (environment.acceptsProfiles(Profiles.of("dev")) && properties.getVerification().isExposeCode()) {
             response.add("devCode", code); // demo mode only, see reggie.verification.expose-code
         }
         return response;

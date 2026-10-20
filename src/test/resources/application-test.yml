@@ -3,6 +3,7 @@
 reggie:
   image-path: ${java.io.tmpdir}/online-shopping-it-images/
   verification:
+    # Intentionally enabled: tests assert this cannot disclose codes without the dev profile.
     expose-code: true
     resend-cooldown-seconds: 0
     max-attempts: 3

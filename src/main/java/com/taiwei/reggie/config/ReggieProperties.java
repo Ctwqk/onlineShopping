@@ -23,7 +23,7 @@ public class ReggieProperties {
     public static class Verification {
         /** How the login code reaches the customer: {@code log} (default), {@code sms} or {@code email}. */
         private String channel = "log";
-        /** Demo helper: echo the generated code in the /user/sendMsg response. Never enable in production. */
+        /** Demo helper: echo the generated code only when the dev profile is also active. */
         private boolean exposeCode = false;
         private int ttlMinutes = 5;
         /** Wrong guesses allowed before the code is invalidated. */

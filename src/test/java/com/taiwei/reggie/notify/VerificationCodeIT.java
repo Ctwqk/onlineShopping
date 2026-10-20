@@ -6,6 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,6 +27,38 @@ class VerificationCodeIT extends AbstractIntegrationTest {
         assertThat(code).matches("[1-9][0-9]{3}");
         assertThat(codes.verify("13800138000", code)).isTrue();
         assertThat(codes.verify("13800138000", code)).isFalse(); // consumed
+    }
+
+    @Test
+    void concurrentRequestsCannotConsumeTheSameCodeTwice() throws Exception {
+        String code = codes.issue("13800138000");
+        var pool = Executors.newFixedThreadPool(12);
+        CountDownLatch ready = new CountDownLatch(12);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> results = new ArrayList<>();
+        try {
+            for (int i = 0; i < 12; i++) {
+                results.add(pool.submit(() -> {
+                    ready.countDown();
+                    if (!start.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("verification workers did not start");
+                    }
+                    return codes.verify("13800138000", code);
+                }));
+            }
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            int accepted = 0;
+            for (Future<Boolean> result : results) {
+                if (result.get(10, TimeUnit.SECONDS)) {
+                    accepted++;
+                }
+            }
+            assertThat(accepted).as("a login code has only one successful consumer").isEqualTo(1);
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+        }
     }
 
     @Test
@@ -52,8 +90,7 @@ class VerificationCodeIT extends AbstractIntegrationTest {
         client.post("/user/login", Map.of("phone", "13800138000", "code", "0000"))
                 .assertFailure("wrong or expired");
 
-        String code = client.post("/user/sendMsg", Map.of("phone", "13800138000")).json()
-                .path("map").path("devCode").asText();
+        String code = requestCode(client, "13800138000");
         client.post("/user/login", Map.of("phone", "13800138000", "code", code)).assertSuccess();
         // the same code cannot be replayed from another browser
         anonymous().post("/user/login", Map.of("phone", "13800138000", "code", code))
@@ -74,8 +111,7 @@ class VerificationCodeIT extends AbstractIntegrationTest {
         jdbc.update("UPDATE `user` SET status = 0");
 
         ApiClient client = anonymous();
-        String code = client.post("/user/sendMsg", Map.of("phone", "13800138000")).json()
-                .path("map").path("devCode").asText();
+        String code = requestCode(client, "13800138000");
         client.post("/user/login", Map.of("phone", "13800138000", "code", code)).assertFailure("disabled");
     }
 

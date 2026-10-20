@@ -100,9 +100,15 @@ public abstract class AbstractIntegrationTest {
     /** A customer that has completed the phone + code login. */
     protected ApiClient customerClient(String phone) {
         ApiClient client = anonymous();
-        String code = client.post("/user/sendMsg", java.util.Map.of("phone", phone))
-                .json().path("map").path("devCode").asText();
+        String code = requestCode(client, phone);
         client.post("/user/login", java.util.Map.of("phone", phone, "code", code)).assertSuccess();
         return client;
+    }
+
+    /** Tests read their own Redis fixture; a non-dev HTTP response must never reveal the code. */
+    protected String requestCode(ApiClient client, String phone) {
+        var response = client.post("/user/sendMsg", java.util.Map.of("phone", phone)).assertSuccess();
+        org.assertj.core.api.Assertions.assertThat(response.json().path("map").has("devCode")).isFalse();
+        return redis.opsForValue().get("login:code:" + phone);
     }
 }
