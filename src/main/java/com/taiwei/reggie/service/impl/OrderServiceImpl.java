@@ -65,6 +65,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     @Override
     @Transactional
     public Orders submit(Long userId, Orders order) {
+        // Serialize checkout retries for this customer before reading the cart. Otherwise both transactions
+        // can price the same rows and save separate orders before either one empties the cart.
+        User user = userService.getOne(new LambdaQueryWrapper<User>().eq(User::getId, userId).last("FOR UPDATE"));
+        if (user == null) {
+            throw new CustomException("customer not found");
+        }
         List<ShoppingCart> cart = shoppingCartService.listFor(userId);
         if (cart.isEmpty()) {
             throw new CustomException("cart is empty");
@@ -73,8 +79,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         if (address == null) {
             throw new CustomException("no address information found");
         }
-        User user = userService.getById(userId);
-
         Long orderId = IdWorker.getId();
         List<OrderDetail> details = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
@@ -105,7 +109,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         saved.setPayMethod(order.getPayMethod() == null ? 1 : order.getPayMethod());
         saved.setRemark(order.getRemark());
         saved.setAmount(total.setScale(2));
-        saved.setUserName(user == null ? null : user.getName());
+        saved.setUserName(user.getName());
         saved.setConsignee(address.getConsignee());
         saved.setPhone(address.getPhone());
         saved.setAddress(join(address.getProvinceName(), address.getCityName(), address.getDistrictName(),

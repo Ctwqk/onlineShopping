@@ -37,13 +37,15 @@ public class ShoppingCartServiceImpl extends ServiceImpl<ShoppingCartMapper, Sho
         requireExactlyOneProduct(request);
         String flavor = StringUtils.hasText(request.getDishFlavor()) ? request.getDishFlavor() : null;
 
+        // Validate availability on every add, including increments of an existing row.
+        ShoppingCart priced = priceFromCatalogue(request);
         ShoppingCart row = findRow(userId, request.getDishId(), request.getSetmealId(), flavor);
         if (row != null) {
             // atomic increment: two quick taps on "+" must not lose an update
             this.update(new LambdaUpdateWrapper<ShoppingCart>()
                     .eq(ShoppingCart::getId, row.getId()).setSql("number = number + 1"));
         } else {
-            row = priceFromCatalogue(request);
+            row = priced;
             row.setUserId(userId);
             row.setDishFlavor(request.getDishId() != null ? flavor : null);
             row.setNumber(1);

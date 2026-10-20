@@ -3,12 +3,21 @@ package com.taiwei.reggie.flow;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.taiwei.reggie.support.AbstractIntegrationTest;
 import com.taiwei.reggie.support.ApiClient;
+import com.taiwei.reggie.common.CustomException;
+import com.taiwei.reggie.entity.Orders;
+import com.taiwei.reggie.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static com.taiwei.reggie.support.CatalogueFixtures.category;
 import static com.taiwei.reggie.support.CatalogueFixtures.dish;
@@ -16,6 +25,9 @@ import static com.taiwei.reggie.support.CatalogueFixtures.setmeal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CartAndOrderFlowIT extends AbstractIntegrationTest {
+
+    @Autowired
+    private OrderService orderService;
 
     private ApiClient admin;
     private ApiClient customer;
@@ -122,6 +134,19 @@ class CartAndOrderFlowIT extends AbstractIntegrationTest {
     // ---------------------------------------------------------------- address book
 
     @Test
+    void withdrawnProductsAlreadyInTheCartCannotBeIncremented() {
+        customer.post("/shoppingCart/add", Map.of("dishId", tea)).assertSuccess();
+        customer.post("/shoppingCart/add", Map.of("setmealId", combo)).assertSuccess();
+        admin.post("/dish/status/0?ids=" + tea, Map.of()).assertSuccess();
+        admin.post("/setmeal/status/0?ids=" + combo, Map.of()).assertSuccess();
+
+        customer.post("/shoppingCart/add", Map.of("dishId", tea)).assertFailure("not available");
+        customer.post("/shoppingCart/add", Map.of("setmealId", combo)).assertFailure("not available");
+        assertThat(customer.get("/shoppingCart/list").data())
+                .extracting(row -> row.path("number").asInt()).containsExactly(1, 1);
+    }
+
+    @Test
     void firstAddressBecomesDefaultAndDefaultCanBeMoved() {
         String home = addAddress(customer);
         String office = addAddress(customer);
@@ -208,6 +233,52 @@ class CartAndOrderFlowIT extends AbstractIntegrationTest {
         customer.post("/order/submit", Map.of("addressBookId", address)).assertSuccess();
 
         assertThat(jdbc.queryForObject("SELECT amount FROM orders", BigDecimal.class)).isEqualByComparingTo("5.00");
+    }
+
+    @Test
+    void concurrentCheckoutSubmitsTheCartOnlyOnce() throws Exception {
+        String address = addAddress(customer);
+        customer.post("/shoppingCart/add", Map.of("dishId", tea)).assertSuccess();
+        Long userId = jdbc.queryForObject("SELECT id FROM `user` WHERE phone = '13800138000'", Long.class);
+        var pool = Executors.newFixedThreadPool(8);
+        CountDownLatch ready = new CountDownLatch(8);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> results = new ArrayList<>();
+        try {
+            for (int i = 0; i < 8; i++) {
+                results.add(pool.submit(() -> {
+                    ready.countDown();
+                    if (!start.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("checkout workers did not start");
+                    }
+                    Orders request = new Orders();
+                    request.setAddressBookId(Long.valueOf(address));
+                    try {
+                        orderService.submit(userId, request);
+                        return true;
+                    } catch (CustomException emptyCart) {
+                        assertThat(emptyCart.getMessage()).contains("cart is empty");
+                        return false;
+                    }
+                }));
+            }
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            int submitted = 0;
+            for (Future<Boolean> result : results) {
+                if (result.get(15, TimeUnit.SECONDS)) {
+                    submitted++;
+                }
+            }
+            assertThat(submitted).as("concurrent retries must not duplicate the order").isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM orders", Integer.class)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM order_detail", Integer.class)).isEqualTo(1);
+            assertThat(customer.get("/shoppingCart/list").data()).isEmpty();
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     @Test
