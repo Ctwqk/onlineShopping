@@ -3,6 +3,8 @@
 services:
   mysql:
     image: mysql:8.4
+    mem_limit: 1g
+    memswap_limit: 1g
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-reggie-root}
@@ -27,6 +29,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    mem_limit: 128m
+    memswap_limit: 128m
     restart: unless-stopped
     volumes:
       - redis-data:/data
@@ -40,6 +44,8 @@ services:
 
   app:
     build: .
+    mem_limit: 1g
+    memswap_limit: 1g
     restart: unless-stopped
     depends_on:
       mysql:
@@ -54,12 +60,21 @@ services:
       DB_USERNAME: reggie
       DB_PASSWORD: ${DB_PASSWORD:-reggie}
       REDIS_HOST: redis
+      REGGIE_ADMIN_USERNAME: ${REGGIE_ADMIN_USERNAME:-admin}
       REGGIE_ADMIN_PASSWORD: ${REGGIE_ADMIN_PASSWORD:-}
       REGGIE_VERIFICATION_CHANNEL: ${REGGIE_VERIFICATION_CHANNEL:-log}
       REGGIE_SMS_ACCESS_KEY_ID: ${REGGIE_SMS_ACCESS_KEY_ID:-}
       REGGIE_SMS_ACCESS_KEY_SECRET: ${REGGIE_SMS_ACCESS_KEY_SECRET:-}
       REGGIE_SMS_SIGN_NAME: ${REGGIE_SMS_SIGN_NAME:-}
       REGGIE_SMS_TEMPLATE_CODE: ${REGGIE_SMS_TEMPLATE_CODE:-}
+      # Omit an unset host: even an empty value enables Boot's SMTP auto-configuration and health probe.
+      SPRING_MAIL_HOST:
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-25}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-false}
+      REGGIE_EMAIL_FROM: ${REGGIE_EMAIL_FROM:-}
     ports:
       - "${APP_PORT:-48080}:8080"
     volumes:

@@ -2,6 +2,7 @@
 
 # ---- build -------------------------------------------------------------------------------------------------
 FROM maven:3.9-eclipse-temurin-21 AS build
+ENV MAVEN_OPTS="-Xmx512m"
 WORKDIR /build
 COPY pom.xml .
 COPY src ./src
@@ -18,7 +19,7 @@ COPY --from=build --chown=app:app /build/app.jar app.jar
 USER app
 ENV TZ=UTC \
     REGGIE_IMAGE_PATH=/data/images/ \
-    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
+    JAVA_TOOL_OPTIONS="-Xmx512m"
 VOLUME /data/images
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

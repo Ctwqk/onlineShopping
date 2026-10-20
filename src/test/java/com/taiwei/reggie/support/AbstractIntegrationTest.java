@@ -13,10 +13,10 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Base class of the integration tests. Runs the whole application (real MySQL with the Flyway schema, real Redis)
@@ -29,16 +29,29 @@ import java.util.Set;
 @ActiveProfiles("test")
 public abstract class AbstractIntegrationTest {
 
+    private static final String CONTAINER_PREFIX = System.getProperty("it.container-prefix", "online-shopping-it")
+            + "-" + UUID.randomUUID();
+
     // root user: Flyway's MySQL support reads performance_schema.user_variables_by_thread, which unprivileged
     // users may not select from (docker-compose grants that explicitly, see docker/mysql-init).
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.4"))
-            .withDatabaseName("reggie").withUsername("root").withPassword("test");
+            .withDatabaseName("reggie").withUsername("root").withPassword("test")
+            .withCreateContainerCmdModifier(cmd -> {
+                cmd.withName(CONTAINER_PREFIX + "-mysql");
+                cmd.getHostConfig().withMemory(1024L * 1024 * 1024).withMemorySwap(1024L * 1024 * 1024);
+            });
 
     static final GenericContainer<?> REDIS = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-            .withExposedPorts(6379);
+            .withExposedPorts(6379)
+            .withCreateContainerCmdModifier(cmd -> {
+                cmd.withName(CONTAINER_PREFIX + "-redis");
+                cmd.getHostConfig().withMemory(128L * 1024 * 1024).withMemorySwap(128L * 1024 * 1024);
+            });
 
     static {
-        Startables.deepStart(MYSQL, REDIS).join();
+        // Start on the initializing thread: the configuration callbacks above also belong to this class.
+        MYSQL.start();
+        REDIS.start();
     }
 
     @DynamicPropertySource
