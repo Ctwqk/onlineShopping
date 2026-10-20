@@ -1,6 +1,6 @@
 # onlineShopping
 
-[![CI](https://github.com/Ctwqk/onlineShopping/actions/workflows/ci.yml/badge.svg?branch=portfolio-upgrade)](https://github.com/Ctwqk/onlineShopping/actions/workflows/ci.yml)
+[![CI](https://github.com/Ctwqk/onlineShopping/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ctwqk/onlineShopping/actions/workflows/ci.yml)
 
 A food-ordering platform on **Spring Boot 3**: a restaurant **admin console** (dishes, combos, categories, staff,
 orders) and a **mobile customer front** (phone login, menu, cart, address book, checkout, order history), backed by
@@ -26,7 +26,7 @@ This project started as the well-known **"Reggie" (瑞吉外卖) takeout course 
 read/write splitting, Redis caching and SMS / email codes (see the `RWsplit`, `email_impl` and `front_back_split`
 branches).
 
-The 2026 upgrade (the `portfolio-upgrade` branch) keeps that identity and adds what it lacked to run and be trusted:
+The 2026 upgrade keeps that identity and adds what it lacked to run and be trusted:
 
 - **Platform**: Spring Boot 2.4 -> 3.5, jakarta, Java 17+, current MyBatis-Plus / Druid / springdoc, a Flyway schema
   (the repository shipped no SQL), configuration through environment variables instead of an untracked
@@ -97,7 +97,6 @@ Requirements: Docker with the Compose plugin. Nothing else (the Maven build happ
 ```bash
 git clone https://github.com/Ctwqk/onlineShopping.git
 cd onlineShopping
-git checkout portfolio-upgrade        # until this branch is merged to main
 docker compose up --build             # first build takes a couple of minutes; add -d to detach
 ```
 
@@ -262,4 +261,4 @@ Found by reading the code and covered by the tests above:
 - `src/main/resources/front/fonts` contains PingFang SC and DIN font files that came with the course template; they
   are proprietary typefaces, so replace them with open fonts before deploying the front-end publicly.
 - The Playwright screenshot script is manual; it is not part of CI.
-- No `LICENSE` file yet (the owner has to choose one).
+- My code is released under the [MIT License](LICENSE). The course-template front-end assets and fonts are not covered by it.
