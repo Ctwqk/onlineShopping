@@ -35,7 +35,7 @@ The 2026 upgrade (the `portfolio-upgrade` branch) keeps that identity and adds w
   optional (the code is logged, and echoed in the UI in dev mode).
 - **Bug fixes** in the order, cart, address, cache, upload and auth code, plus the endpoints the UIs call that the
   backend never implemented (see [What was fixed](#what-was-fixed)).
-- **Tests and CI**: 96 tests including Testcontainers integration tests over real MySQL + Redis, GitHub Actions.
+- **Tests and CI**: 104 tests including Testcontainers integration tests over real MySQL + Redis, GitHub Actions.
 
 ## Features
 
@@ -170,8 +170,8 @@ real providers (no accounts were used); only the default log channel is exercise
 ## Tests
 
 ```bash
-mvn test      # 45 fast unit tests, no Docker needed
-mvn verify    # + 51 integration tests; needs a running Docker daemon (Testcontainers: mysql:8.4, redis:7-alpine)
+mvn test      # 50 fast unit tests, no Docker needed
+mvn verify    # + 54 integration tests; needs a running Docker daemon (Testcontainers: mysql:8.4, redis:7-alpine)
 ```
 
 The integration tests start the whole application against real MySQL (with the Flyway schema) and Redis and drive it
@@ -229,12 +229,18 @@ Found by reading the code and covered by the tests above:
   Eviction happens when the service method returns, just before the transaction commits, so a concurrent read can
   re-cache the old value for up to the 30-minute TTL; acceptable for a menu, not for stock levels.
 - **Login codes**: Redis TTL, five wrong guesses invalidate the code, 30 s resend cooldown. The `dev` profile echoes
-  the code in the response (`reggie.verification.expose-code`) - never enable that in production.
+  the code in the response (`reggie.verification.expose-code`). Outside `dev`, the response never includes it,
+  even if that flag is enabled. Verification and consumption use one atomic Redis script to prevent concurrent
+  code reuse. Never activate the `dev` profile in production.
+- **Checkout retries**: a database row lock serializes simultaneous submissions by the same customer before the
+  cart is read, preventing duplicate orders for that cart. Availability is checked on every cart add, including
+  increments of existing rows.
 - **Passwords**: BCrypt; the original MD5 hashes still verify and are upgraded in place on first login.
 - **ShardingSphere removed**: the JDBC read/write splitting needed a second MySQL just to start, and nothing in the
   code depended on it. To bring it back, ShardingSphere-JDBC 5.x (or a Spring `AbstractRoutingDataSource` with
-  `@Transactional(readOnly = true)` routing) can wrap the same datasource; the original wiring is on the `RWsplit`
-  branch.
+  `@Transactional(readOnly = true)` routing) can wrap the same datasource. The `RWsplit` branch preserves the
+  historical source and dependency, but has no tracked datasource/routing configuration; it is not a complete
+  runnable setup.
 - **Knife4j**: the 4.5 starter predates Spring Framework 6.2 and breaks against current springdoc, so only its UI is
   used (`knife4j.enable=false`, springdoc pinned to 2.8). `/doc.html` works; Knife4j's extra OpenAPI extensions are
   off.
@@ -246,8 +252,10 @@ Found by reading the code and covered by the tests above:
 ## Known limitations and roadmap
 
 - UI strings are Chinese (course template); an English / i18n pass over the static pages is not done.
+- Email-code delivery is available through the API; the bundled customer login form accepts phone numbers only.
 - No payment integration: checkout records the chosen method and creates the order as "awaiting dispatch".
 - HTTP sessions live in the application's memory (single instance); Spring Session on Redis would fix that.
+- Concurrent cart edits across tabs/devices are not coordinated with checkout.
 - The admin UI offers dispatch and complete only; cancelling exists in the API (`PUT /order` with status 5) but has no
   button, and customers cannot cancel. There are no staff roles: every employee is an administrator.
 - Uploaded images live on a local volume.
